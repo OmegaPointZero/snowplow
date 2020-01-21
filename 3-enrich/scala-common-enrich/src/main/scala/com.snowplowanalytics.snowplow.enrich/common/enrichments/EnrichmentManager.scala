@@ -45,7 +45,7 @@ import enrichments.registry.pii.PiiPseudonymizerEnrichment
 import enrichments.registry.sqlquery.SqlQueryEnrichment
 import enrichments.web.{PageEnrichments => WPE}
 import outputs.EnrichedEvent
-import utils.{Shredder, ConversionUtils => CU, JsonUtils => JU}
+import utils.{IgluUtils, ConversionUtils => CU, JsonUtils => JU}
 import utils.MapTransformer._
 
 /**
@@ -176,15 +176,16 @@ object EnrichmentManager {
     val yauaaContext: Option[SelfDescribingData[Json]] =
       getYauaaContext(event, registry.yauaa)
 
-    // Validate custom contexts
-    val customContexts
+    // Validate input contexts
+    val customContexts //TODO -> inputContexts
       : F[ValidatedNel[FailureDetails.EnrichmentStageIssue, List[SelfDescribingData[Json]]]] =
-      Shredder.extractAndValidateCustomContexts(event, client).map(_.toValidatedNel)
+      IgluUtils.validateInputContexts(event, client).value.map(_.toValidatedNel)
 
     // Validate unstructured event
     val unstructEvent
       : F[ValidatedNel[FailureDetails.EnrichmentStageIssue, Option[SelfDescribingData[Json]]]] =
-      Shredder.extractAndValidateUnstructEvent(event, client).map(_.toValidatedNel)
+      IgluUtils.validateUnstructEvent(event, client).map(_.toValidatedNel)
+    // IgluUtils.extractAndValidateUnstructEvent(event, client).map(_.toValidatedNel)
 
     // Execute IP lookup enrichment
     val geoloc = geoLocation(event, registry.ipLookups)
@@ -243,6 +244,14 @@ object EnrichmentManager {
       case contexts =>
         event.derived_contexts = ME.formatDerivedContexts(contexts)
     }
+
+    // Validate all the contexts created by the enrichments
+    //val validatedDerivedContexts
+    //    : F[Either[FailureDetails.EnrichmentFailure, Unit]] =
+    //  for {
+    //    sdjs <- derivedContexts
+    //    checked <- IgluUtils.validateEnrichmentsContexts(client, sdjs)
+    //  } yield checked
 
     // Collect our errors on Failure, or return our event on Success
     val result = (

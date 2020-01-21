@@ -26,7 +26,7 @@ import com.snowplowanalytics.iglu.core.{SchemaKey, SchemaVer}
 
 import com.snowplowanalytics.snowplow.badrows.FailureDetails
 
-import com.snowplowanalytics.snowplow.enrich.common.utils.Shredder
+import com.snowplowanalytics.snowplow.enrich.common.utils.IgluUtils
 import outputs.EnrichedEvent
 
 object SchemaEnrichment {
@@ -75,7 +75,7 @@ object SchemaEnrichment {
       FailureDetails.EnrichmentFailure(None, f).asLeft
     }
 
-    Shredder.extractUnstructEvent(event, client).value.map {
+    IgluUtils.extractUnstructEvent(event, client).value.map {
       case Right(Some(f)) =>
         f.schema.asRight
       case _ =>
